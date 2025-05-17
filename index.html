@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HealthSync Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .chart-container {
+            transition: all 0.3s ease;
+        }
+        .dark .chart-container {
+            background-color: #1f2937;
+        }
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #3b82f6;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #3b82f6;
+        }
+        .sync-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .goal-line {
+            border-top: 2px dashed #3b82f6;
+            position: relative;
+        }
+        .goal-line::after {
+            content: "Goal";
+            position: absolute;
+            right: 0;
+            top: -10px;
+            font-size: 0.75rem;
+            color: #3b82f6;
+        }
+        .goal-line {
+            display: none;
+        }           
+        .dark .goal-line {
+            border-top-color: #93c5fd;
+        }
+        .dark .goal-line::after {
+            color: #93c5fd;
+           
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-white dark:bg-gray-800 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-3">
+                        HS
+                    </div>
+                    <h1 class="text-xl font-bold text-gray-800 dark:text-white">HealthSync Dashboard</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="syncBtn" class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                        <span id="syncText">Sync Device</span>
+                        <i id="syncIcon" class="fas fa-sync-alt ml-2"></i>
+                    </button>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none">
+                        <input type="checkbox" id="darkToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="darkToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                    <label for="darkToggle" class="text-gray-700 dark:text-gray-300">
+                        <i class="fas fa-moon"></i>
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+            <!-- Time Range Selector -->
+            <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Time Range</h2>
+                </div>
+                <div class="flex space-x-2 overflow-x-auto pb-2">
+                    <button class="time-range-btn active px-4 py-2 bg-blue-600 text-white rounded-lg" data-range="day">Today</button>
+                    <button class="time-range-btn px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" data-range="week">This Week</button>
+                    <button class="time-range-btn px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition" data-range="month">This Month</button>
+                </div>
+            </div>
+
+            <!-- Metric Toggles -->
+            <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Display Metrics</h2>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="heartRateToggle" class="metric-toggle h-4 w-4 text-blue-600 rounded" checked>
+                        <label for="heartRateToggle" class="ml-2 text-gray-700 dark:text-gray-300">Heart Rate</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="stepsToggle" class="metric-toggle h-4 w-4 text-blue-600 rounded" checked>
+                        <label for="stepsToggle" class="ml-2 text-gray-700 dark:text-gray-300">Steps</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="sleepToggle" class="metric-toggle h-4 w-4 text-blue-600 rounded" checked>
+                        <label for="sleepToggle" class="ml-2 text-gray-700 dark:text-gray-300">Sleep</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="caloriesToggle" class="metric-toggle h-4 w-4 text-blue-600 rounded" checked>
+                        <label for="caloriesToggle" class="ml-2 text-gray-700 dark:text-gray-300">Calories</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Heart Rate Chart -->
+                <div id="heartRateContainer" class="chart-container bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Heart Rate</h2>
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-500 dark:text-gray-400 mr-2">Avg:</span>
+                            <span id="heartRateAvg" class="text-lg font-bold text-red-500">--</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400 ml-1">bpm</span>
+                        </div>
+                    </div>
+                    <div class="relative h-64">
+                        <canvas id="heartRateChart"></canvas>
+                        <div id="heartRateGoal" class="goal-line" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- Steps Chart -->
+                <div id="stepsContainer" class="chart-container bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Steps</h2>
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-500 dark:text-gray-400 mr-2">Total:</span>
+                            <span id="stepsTotal" class="text-lg font-bold text-green-500">--</span>
+                        </div>
+                    </div>
+                    <div class="relative h-64">
+                        <canvas id="stepsChart"></canvas>
+                        <div id="stepsGoal" class="goal-line" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- Sleep Chart -->
+                <div id="sleepContainer" class="chart-container bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Sleep</h2>
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-500 dark:text-gray-400 mr-2">Total:</span>
+                            <span id="sleepTotal" class="text-lg font-bold text-indigo-500">--</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400 ml-1">hours</span>
+                        </div>
+                    </div>
+                    <div class="relative h-64">
+                        <canvas id="sleepChart"></canvas>
+                        <div id="sleepGoal" class="goal-line" style="top: 30%;"></div>
+                    </div>
+                </div>
+
+                <!-- Calories Chart -->
+                <div id="caloriesContainer" class="chart-container bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800 dark:text-white">Calories Burned</h2>
+                        <div class="flex items-center">
+                            <span class="text-sm text-gray-500 dark:text-gray-400 mr-2">Total:</span>
+                            <span id="caloriesTotal" class="text-lg font-bold text-yellow-500">--</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400 ml-1">kcal</span>
+                        </div>
+                    </div>
+                    <div class="relative h-64">
+                        <canvas id="caloriesChart"></canvas>
+                        <div id="caloriesGoal" class="goal-line" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-red-100 dark:bg-red-900/30 mr-4">
+                            <i class="fas fa-heartbeat text-red-500 dark:text-red-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Max Heart Rate</p>
+                            <p id="maxHeartRate" class="text-xl font-bold text-gray-800 dark:text-white">-- bpm</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-green-100 dark:bg-green-900/30 mr-4">
+                            <i class="fas fa-walking text-green-500 dark:text-green-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Distance</p>
+                            <p id="distance" class="text-xl font-bold text-gray-800 dark:text-white">-- km</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-indigo-100 dark:bg-indigo-900/30 mr-4">
+                            <i class="fas fa-moon text-indigo-500 dark:text-indigo-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Sleep Quality</p>
+                            <p id="sleepQuality" class="text-xl font-bold text-gray-800 dark:text-white">-- %</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full bg-yellow-100 dark:bg-yellow-900/30 mr-4">
+                            <i class="fas fa-fire text-yellow-500 dark:text-yellow-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Active Minutes</p>
+                            <p id="activeMinutes" class="text-xl font-bold text-gray-800 dark:text-white">-- min</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Dark mode toggle
+        const darkToggle = document.getElementById('darkToggle');
+        const html = document.documentElement;
+
+        // Check for saved user preference or system preference
+        if (localStorage.getItem('darkMode') === 'true' || 
+            (!localStorage.getItem('darkMode') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+            darkToggle.checked = true;
+        }
+
+        darkToggle.addEventListener('change', function() {
+            if (this.checked) {
+                html.classList.add('dark');
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                html.classList.remove('dark');
+                localStorage.setItem('darkMode', 'false');
+            }
+        });
+
+        // Time range selector
+        const timeRangeBtns = document.querySelectorAll('.time-range-btn');
+        timeRangeBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                timeRangeBtns.forEach(b => {
+                    b.classList.remove('active', 'bg-blue-600', 'text-white');
+                    b.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-white');
+                });
+                this.classList.add('active', 'bg-blue-600', 'text-white');
+                this.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-white');
+                
+                const range = this.dataset.range;
+                updateCharts(range);
+            });
+        });
+
+        // Metric toggles
+        const metricToggles = document.querySelectorAll('.metric-toggle');
+        metricToggles.forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const chartId = this.id.replace('Toggle', 'Container');
+                const container = document.getElementById(chartId);
+                if (this.checked) {
+                    container.style.display = 'block';
+                } else {
+                    container.style.display = 'none';
+                }
+            });
+        });
+
+        // Sync button
+        const syncBtn = document.getElementById('syncBtn');
+        const syncIcon = document.getElementById('syncIcon');
+        const syncText = document.getElementById('syncText');
+        
+        syncBtn.addEventListener('click', function() {
+            syncIcon.classList.add('sync-spin');
+            syncText.textContent = 'Syncing...';
+            syncBtn.disabled = true;
+            
+            // Simulate sync delay
+            setTimeout(() => {
+                syncIcon.classList.remove('sync-spin');
+                syncText.textContent = 'Sync Complete';
+                syncBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                syncBtn.classList.add('bg-green-600', 'hover:bg-green-700');
+                
+                // Load mock data
+                loadData();
+                
+                // Reset button after delay
+                setTimeout(() => {
+                    syncText.textContent = 'Sync Device';
+                    syncBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    syncBtn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    syncBtn.disabled = false;
+                }, 2000);
+            }, 3000);
+        });
+
+        // Chart instances
+        let heartRateChart, stepsChart, sleepChart, caloriesChart;
+
+        // Initialize charts
+        function initCharts() {
+            // Heart Rate Chart
+            const heartRateCtx = document.getElementById('heartRateChart').getContext('2d');
+            heartRateChart = new Chart(heartRateCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Heart Rate (bpm)',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('Heart Rate (bpm)')
+            });
+
+            // Steps Chart
+            const stepsCtx = document.getElementById('stepsChart').getContext('2d');
+            stepsChart = new Chart(stepsCtx, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Steps',
+                        data: [],
+                        backgroundColor: '#10b981',
+                        borderColor: '#10b981',
+                        borderWidth: 1
+                    }]
+                },
+                options: getChartOptions('Steps')
+            });
+
+            // Sleep Chart
+            const sleepCtx = document.getElementById('sleepChart').getContext('2d');
+            sleepChart = new Chart(sleepCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Sleep (hours)',
+                        data: [],
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('Sleep (hours)')
+            });
+
+            // Calories Chart
+            const caloriesCtx = document.getElementById('caloriesChart').getContext('2d');
+            caloriesChart = new Chart(caloriesCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Calories Burned (kcal)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: getChartOptions('Calories Burned (kcal)')
+            });
+        }
+
+        // Common chart options
+        function getChartOptions(title) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: '#1f2937',
+                        titleColor: '#f9fafb',
+                        bodyColor: '#f9fafb',
+                        borderColor: '#374151',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#6b7280'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: '#e5e7eb',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#6b7280'
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            };
+        }
+
+        // Dark mode adjustments for charts
+        function adjustChartsForDarkMode() {
+            const isDark = html.classList.contains('dark');
+            const gridColor = isDark ? '#374151' : '#e5e7eb';
+            const tickColor = isDark ? '#9ca3af' : '#6b7280';
+            
+            [heartRateChart, stepsChart, sleepChart, caloriesChart].forEach(chart => {
+                if (chart) {
+                    chart.options.scales.x.grid.color = gridColor;
+                    chart.options.scales.y.grid.color = gridColor;
+                    chart.options.scales.x.ticks.color = tickColor;
+                    chart.options.scales.y.ticks.color = tickColor;
+                    chart.update();
+                }
+            });
+        }
+
+        // Generate mock data based on time range
+        function generateMockData(range) {
+            let labels = [];
+            let heartRateData = [];
+            let stepsData = [];
+            let sleepData = [];
+            let caloriesData = [];
+            
+            const now = new Date();
+            let maxHeartRate = 0;
+            let totalSteps = 0;
+            let totalSleep = 0;
+            let totalCalories = 0;
+            
+            if (range === 'day') {
+                // Generate hourly data for today
+                for (let i = 0; i < 24; i++) {
+                    const hour = i < 10 ? `0${i}:00` : `${i}:00`;
+                    labels.push(hour);
+                    
+                    // Heart rate varies throughout the day
+                    const hr = Math.floor(60 + Math.sin(i / 4) * 20 + Math.random() * 10);
+                    heartRateData.push(hr);
+                    if (hr > maxHeartRate) maxHeartRate = hr;
+                    
+                    // Steps are higher during daytime
+                    const steps = i >= 8 && i <= 20 ? Math.floor(500 + Math.random() * 1000) : Math.floor(50 + Math.random() * 100);
+                    stepsData.push(steps);
+                    totalSteps += steps;
+                    
+                    // Sleep only at night
+                    const sleep = i >= 22 || i <= 6 ? 0.5 + Math.random() * 0.5 : 0;
+                    sleepData.push(sleep);
+                    totalSleep += sleep;
+                    
+                    // Calories burn more during activity
+                    const calories = i >= 8 && i <= 20 ? Math.floor(20 + Math.random() * 30) : Math.floor(5 + Math.random() * 10);
+                    caloriesData.push(calories);
+                    totalCalories += calories;
+                }
+            } else if (range === 'week') {
+                // Generate daily data for the week
+                const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                for (let i = 0; i < 7; i++) {
+                    labels.push(days[i]);
+                    
+                    // Heart rate average per day
+                    const hr = Math.floor(65 + Math.sin(i) * 5 + Math.random() * 5);
+                    heartRateData.push(hr);
+                    if (hr > maxHeartRate) maxHeartRate = hr;
+                    
+                    // Steps vary by day (more on weekdays)
+                    const steps = i > 0 && i < 6 ? Math.floor(8000 + Math.random() * 5000) : Math.floor(3000 + Math.random() * 3000);
+                    stepsData.push(steps);
+                    totalSteps += steps;
+                    
+                    // Sleep varies slightly
+                    const sleep = 7 + Math.sin(i) * 0.5 + Math.random() * 1;
+                    sleepData.push(sleep);
+                    totalSleep += sleep;
+                    
+                    // Calories burn more on active days
+                    const calories = i > 0 && i < 6 ? Math.floor(400 + Math.random() * 200) : Math.floor(300 + Math.random() * 150);
+                    caloriesData.push(calories);
+                    totalCalories += calories;
+                }
+            } else { // month
+                // Generate weekly data for the month (4 weeks)
+                for (let i = 1; i <= 4; i++) {
+                    labels.push(`Week ${i}`);
+                    
+                    // Heart rate average per week
+                    const hr = Math.floor(68 + Math.sin(i) * 3 + Math.random() * 3);
+                    heartRateData.push(hr);
+                    if (hr > maxHeartRate) maxHeartRate = hr;
+                    
+                    // Steps per week
+                    const steps = Math.floor(35000 + Math.random() * 15000);
+                    stepsData.push(steps);
+                    totalSteps += steps;
+                    
+                    // Sleep per week (average per day * 7)
+                    const sleep = (7.5 + Math.sin(i) * 0.3 + Math.random() * 0.5) * 7;
+                    sleepData.push(sleep);
+                    totalSleep += sleep;
+                    
+                    // Calories per week
+                    const calories = Math.floor(2500 + Math.random() * 1000);
+                    caloriesData.push(calories);
+                    totalCalories += calories;
+                }
+            }
+            
+            // Calculate averages
+            const avgHeartRate = Math.round(heartRateData.reduce((a, b) => a + b, 0) / heartRateData.length);
+            
+            return {
+                labels,
+                heartRateData,
+                stepsData,
+                sleepData,
+                caloriesData,
+                metrics: {
+                    avgHeartRate,
+                    maxHeartRate,
+                    totalSteps,
+                    totalSleep: Math.round(totalSleep * 10) / 10,
+                    totalCalories,
+                    distance: Math.round(totalSteps * 0.000762 * 10) / 10, // Convert steps to km
+                    sleepQuality: Math.round(85 + Math.random() * 15),
+                    activeMinutes: Math.round(totalCalories / 7)
+                }
+            };
+        }
+
+        // Update charts with new data
+        function updateCharts(range = 'day') {
+            const data = generateMockData(range);
+            
+            // Update heart rate chart
+            heartRateChart.data.labels = data.labels;
+            heartRateChart.data.datasets[0].data = data.heartRateData;
+            heartRateChart.update();
+            
+            // Update steps chart
+            stepsChart.data.labels = data.labels;
+            stepsChart.data.datasets[0].data = data.stepsData;
+            stepsChart.update();
+            
+            // Update sleep chart
+            sleepChart.data.labels = data.labels;
+            sleepChart.data.datasets[0].data = data.sleepData;
+            sleepChart.update();
+            
+            // Update calories chart
+            caloriesChart.data.labels = data.labels;
+            caloriesChart.data.datasets[0].data = data.caloriesData;
+            caloriesChart.update();
+            
+            // Update summary metrics
+            document.getElementById('heartRateAvg').textContent = data.metrics.avgHeartRate;
+            document.getElementById('maxHeartRate').textContent = `${data.metrics.maxHeartRate} bpm`;
+            document.getElementById('stepsTotal').textContent = data.metrics.totalSteps.toLocaleString();
+            document.getElementById('sleepTotal').textContent = data.metrics.totalSleep;
+            document.getElementById('caloriesTotal').textContent = data.metrics.totalCalories.toLocaleString();
+            document.getElementById('distance').textContent = `${data.metrics.distance} km`;
+            document.getElementById('sleepQuality').textContent = `${data.metrics.sleepQuality}%`;
+            document.getElementById('activeMinutes').textContent = data.metrics.activeMinutes;
+        }
+
+        // Load initial data
+        function loadData() {
+            updateCharts();
+        }
+
+        // Initialize everything when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            initCharts();
+            adjustChartsForDarkMode();
+            
+            // Watch for dark mode changes
+            darkToggle.addEventListener('change', adjustChartsForDarkMode);
+            
+            // Initial data load with animation
+            setTimeout(() => {
+                loadData();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -35,7 +35,7 @@ A responsive health tracking dashboard built entirely with **HTML, CSS, and Java
 ## 🚀 Live Demo
 
 👉 [Live Demo Link](https://arbaz2227.github.io/HealthSync-Dashboard/)  
-*(Replace this with your Netlify or GitHub Pages URL)*
+
 
 ---
 
